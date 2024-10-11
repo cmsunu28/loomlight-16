@@ -4,12 +4,13 @@
 #include <WS2812Serial.h>
 
 // put function declarations here:
-File myFile;
+
 const int numled = 16;
 const int ledpin = 1;
 //   Teensy 4.1:  1, 8, 14, 17, 20, 24, 29, 35, 47, 53
 
 // for reading/scanning file
+File myFile;
 const byte buffer_size = 20;  // need to be big enough
 char lineBuffer[buffer_size + 1]; // keep space for a trailing null char
 int bufferIndex;
@@ -18,8 +19,12 @@ char character;
 String tieupstring = "";
 String treadlingstring = "";
 String key = "";
-int index = 1;
+int keynum = 1;
 int currentPick[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+int state = 0;
+// 0: processing file
+// 1: 
 
 byte drawingMemory[numled*4];         //  4 bytes per LED for RGBW
 DMAMEM byte displayMemory[numled*16]; // 16 bytes per LED for RGBW
@@ -35,49 +40,8 @@ WS2812Serial leds(numled, displayMemory, drawingMemory, ledpin, WS2812_GRBW);
 #define WHITE  0xAA000000
 #define OFF 0x00000000
 
-void setup() {
-  // put your setup code here, to run once:
-  leds.begin();
-  leds.setBrightness(200); // 0=off, 255=brightest
 
-  // Open serial communications and wait for port to open:
-  Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
-
-  Serial.print("Initializing SD card...");
-
-  if (!SD.begin(BUILTIN_SDCARD)) {
-    Serial.println("initialization failed!");
-    while (1);
-  }
-  Serial.println("initialization done.");
-
-  readFileTest();
-
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-  testAnimation();
-}
-
-void getPick() {
-  setCurrentPickToZero();
-  int position = key.indexOf(String(index)+"=");
-  int endpos = key.indexOf(10,position);
-  String s = key.substring(position,endpos);
-  int i = 0;
-  while (i<s.length()) {
-      if (s[i]!=',') {
-        int nextComma = s.indexOf(',',i);
-        int thisLever = s.substring(i-1,nextComma).toInt();
-        currentPick[thisLever-1]=1;
-        i=nextComma+1;
-      }
-  }
-}
+// put function definitions here:
 
 void setCurrentPickToZero() {
   currentPick[0]=0;
@@ -98,7 +62,23 @@ void setCurrentPickToZero() {
   currentPick[15]=0;
 }
 
-// put function definitions here:
+void getPick() {
+  setCurrentPickToZero();
+  int position = key.indexOf(String(keynum)+"=");
+  int endpos = key.indexOf(10,position);
+  String s = key.substring(position,endpos);
+  unsigned int i = 0;
+  while (i<s.length()) {
+      if (s[i]!=',') {
+        int nextComma = s.indexOf(',',i);
+        int thisLever = s.substring(i-1,nextComma).toInt();
+        currentPick[thisLever-1]=1;
+        i=nextComma+1;
+      }
+  }
+}
+
+
 void createKey() { // replace treadling values using tieup and put into Key
   int lastEqualsSign=0;
   int lastLineReturn=0;
@@ -122,7 +102,7 @@ void createKey() { // replace treadling values using tieup and put into Key
 
 }
 
-void pullTieupAndTreadling(){  // get tieup and treadling strings from file 
+void pullTieupAndTreadling(char *filename){  // get tieup and treadling strings from file 
   File printFile;
   String Buffer_Read_Line = "";
   int LastPosition=0;
@@ -130,36 +110,40 @@ void pullTieupAndTreadling(){  // get tieup and treadling strings from file
   bool writeToTreadling = false;
   bool writeToTieUp = false;
 
-  printFile = SD.open("test.wif");
+  printFile = SD.open(filename);
   int totalBytes = printFile.size();
 
   while (printFile.available()){
     for(LastPosition=0; LastPosition<= totalBytes; LastPosition++){
-      char caracter=printFile.read();
-      Buffer_Read_Line=Buffer_Read_Line+caracter;
-      if(caracter==10 ){            //ASCII new line
-        Serial.println(Buffer_Read_Line);
+      char character=printFile.read();
+      Buffer_Read_Line=Buffer_Read_Line+character;
+      if(character==10 ){            //ASCII new line
+        // Serial.println(Buffer_Read_Line);
 
-        if (writeToTieUp) {
-          // write the buffer to tie-up string
-          tieupstring+=Buffer_Read_Line;
-        }
-
-        if (writeToTreadling) {
-          treadlingstring+=Buffer_Read_Line;
-        }
-
-        if (Buffer_Read_Line.indexOf("[TREADLING]")>0) {
+        if (Buffer_Read_Line.indexOf("[TREADLING]")>=0) {
+          Serial.println("PRINTING TREADLING");
           writeToTreadling=true;
           writeToTieUp=false;
         }
-        else if (Buffer_Read_Line.indexOf("[TIEUP]")>0) {
+        else if (Buffer_Read_Line.indexOf("TIEUP")>=0) {
+          Serial.println("PRINTING TIE-UP");
           writeToTreadling=false;
           writeToTieUp=true;
         }
-        else if (Buffer_Read_Line.indexOf(";")>0) {
+        else if (Buffer_Read_Line.indexOf(";")>=0) {
+          Serial.println("FOUND STOP");
           writeToTreadling=false;
           writeToTieUp=false;
+        }
+        else {
+          if (writeToTieUp) {
+            // write the buffer to tie-up string
+            tieupstring+=Buffer_Read_Line;
+          }
+
+          if (writeToTreadling) {
+            treadlingstring+=Buffer_Read_Line;
+          }
         }
         Buffer_Read_Line="";      //string to 0
       }
@@ -172,16 +156,16 @@ void pullTieupAndTreadling(){  // get tieup and treadling strings from file
   Serial.println(treadlingstring);
 }  
 
-void readFileTest() {
+void readFileTest(char *filename) {
 
   // open the file. note that only one file can be open at a time,
   // so you have to close this one before opening another.
-  myFile = SD.open("test.wif", FILE_READ);
+  myFile = SD.open(filename, FILE_READ);
 
   // re-open the file for reading:
-  myFile = SD.open("test.wif");
+  myFile = SD.open(filename);
   if (myFile) {
-    Serial.println("test.wif:");
+    Serial.println(filename);
 
     // read from the file until there's nothing else in it:
     while (myFile.available()) {
@@ -191,13 +175,13 @@ void readFileTest() {
     myFile.close();
   } else {
     // if the file didn't open, print an error:
-    Serial.println("error opening test.wif");
+    Serial.println("error opening "+String(filename));
   }
 }
 
-bool isInArray(int n, int array[]) {
+bool isInArray(int n, int array[], int length) {
   bool found=false;
-  for (int i=0; i<sizeof(array); i++) {
+  for (int i=0; i<length; i++) {
     if (n==array[i]) {
       found=true;
     }
@@ -207,7 +191,7 @@ bool isInArray(int n, int array[]) {
 
 void setNextArray(int nextPick[]) {
   for(int i=0; i<16; i++) {
-    if (isInArray(i,nextPick)) {
+    if (isInArray(i,nextPick,16)) {
       leds.setPixel(i,GREEN);
     }
     else {
@@ -235,4 +219,33 @@ void testAnimation() {
   colorWipe(PINK, microsec);
   colorWipe(ORANGE, microsec);
   colorWipe(WHITE, microsec);
+}
+
+void setup() {
+  // put your setup code here, to run once:
+  leds.begin();
+  leds.setBrightness(200); // 0=off, 255=brightest
+
+  // Open serial communications and wait for port to open:
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+
+  Serial.print("Initializing SD card...");
+
+  if (!SD.begin(BUILTIN_SDCARD)) {
+    Serial.println("initialization failed!");
+    while (1);
+  }
+  Serial.println("initialization done.");
+
+  // readFileTest("test.wif");
+  pullTieupAndTreadling("test.wif");
+
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  testAnimation();
 }
