@@ -9,6 +9,9 @@ const int numled = 16;
 const int ledpin = 1;
 //   Teensy 4.1:  1, 8, 14, 17, 20, 24, 29, 35, 47, 53
 
+const int forwardbuttonpin = 41;
+const int backbuttonpin = 40;
+
 // for reading/scanning file
 File myFile;
 const byte buffer_size = 20;  // need to be big enough
@@ -20,11 +23,14 @@ String tieupstring = "";
 String treadlingstring = "";
 String key = "";
 int keynum = 1;
+int keymax = 1;
 int currentPick[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 int state = 0;
 // 0: processing file
-// 1: 
+// 1: waiting for button press
+// 2: pressed forward button, doing next
+// 3: pressed back button, doing previous
 
 byte drawingMemory[numled*4];         //  4 bytes per LED for RGBW
 DMAMEM byte displayMemory[numled*16]; // 16 bytes per LED for RGBW
@@ -64,17 +70,21 @@ void setCurrentPickToZero() {
 
 void getPick() {
   setCurrentPickToZero();
-  int position = key.indexOf(String(keynum)+"=");
-  int endpos = key.indexOf(10,position);
+  int position = key.indexOf(String(keynum)+"=")+String(keynum).length()+1;
+  int endpos = key.indexOf(";",position);
   String s = key.substring(position,endpos);
-  unsigned int i = 0;
-  while (i<s.length()) {
-      if (s[i]!=',') {
-        int nextComma = s.indexOf(',',i);
-        int thisLever = s.substring(i-1,nextComma).toInt();
-        currentPick[thisLever-1]=1;
-        i=nextComma+1;
-      }
+  Serial.println(s);
+  // Go through the thing
+  String thisNumber="";
+  for (int i=0; i<s.length(); i++) {
+    if (s.substring(i,i+1)=",") {
+      int thisLever=thisNumber.toInt();
+      currentPick[thisLever-1]=1;
+      thisNumber="";
+    }
+    else {
+      thisNumber+=s.substring(i,i+1);
+    }
   }
 }
 
@@ -82,24 +92,26 @@ void getPick() {
 void createKey() { // replace treadling values using tieup and put into Key
   int lastEqualsSign=0;
   int lastLineReturn=0;
+  String keynumstring = "";
 // for each line in treadling string, find the last character before the line return
   while (lastEqualsSign!=treadlingstring.lastIndexOf("=")) {
     // get everything before equals sign and move to key
     int equalspos=treadlingstring.indexOf("=",lastEqualsSign+1);
-    key+=treadlingstring.substring(lastLineReturn,equalspos);
+    keynumstring=treadlingstring.substring(lastLineReturn+1,equalspos);
     // get the tieup number (number between this position and the next line return)
-    lastLineReturn=treadlingstring.indexOf(10,lastLineReturn+1);
-    String treadle = treadlingstring.substring(equalspos,lastLineReturn);
+    lastLineReturn=treadlingstring.indexOf(";",lastLineReturn+1);
+    String treadle = treadlingstring.substring(equalspos+1,lastLineReturn-1);
     // get this part from the tieup by using treadle+"="
-    int tieuppos = tieupstring.indexOf(treadle+"=");
-    key+=tieupstring.substring(tieuppos,tieupstring.indexOf(10,tieuppos));
-    key+=10;
+    int tieuppos = tieupstring.indexOf(String(treadle.toInt())+"=");
+    String thisTieup = tieupstring.substring(tieuppos+String(treadle.toInt()).length()+1,tieupstring.indexOf(";",tieuppos)-1);
+    // Serial.println(keynumstring+"="+thisTieup.substring(0,thisTieup.length()-1)+";");
+    key+=keynumstring+"="+thisTieup.substring(0,thisTieup.length()-1)+";";
     // set last line return and last equals sign
     lastEqualsSign=equalspos;
   }
+    keymax=keynumstring.toInt();
   // go through tieup until you find this character
   // copy the treadling number, equals, and tieup (post equals sign) into the Key
-
 }
 
 void pullTieupAndTreadling(char *filename){  // get tieup and treadling strings from file 
@@ -121,28 +133,28 @@ void pullTieupAndTreadling(char *filename){  // get tieup and treadling strings 
         // Serial.println(Buffer_Read_Line);
 
         if (Buffer_Read_Line.indexOf("[TREADLING]")>=0) {
-          Serial.println("PRINTING TREADLING");
+          // Serial.println("PRINTING TREADLING");
           writeToTreadling=true;
           writeToTieUp=false;
         }
-        else if (Buffer_Read_Line.indexOf("TIEUP")>=0) {
-          Serial.println("PRINTING TIE-UP");
+        else if (Buffer_Read_Line.indexOf("[TIEUP]")>=0) {
+          // Serial.println("PRINTING TIE-UP");
           writeToTreadling=false;
           writeToTieUp=true;
         }
         else if (Buffer_Read_Line.indexOf(";")>=0) {
-          Serial.println("FOUND STOP");
+          // Serial.println("FOUND STOP");
           writeToTreadling=false;
           writeToTieUp=false;
         }
         else {
           if (writeToTieUp) {
             // write the buffer to tie-up string
-            tieupstring+=Buffer_Read_Line;
+            tieupstring+=String(Buffer_Read_Line)+";";
           }
 
           if (writeToTreadling) {
-            treadlingstring+=Buffer_Read_Line;
+            treadlingstring+=String(Buffer_Read_Line)+";";
           }
         }
         Buffer_Read_Line="";      //string to 0
@@ -150,11 +162,25 @@ void pullTieupAndTreadling(char *filename){  // get tieup and treadling strings 
     }
   }
   printFile.close();
-  Serial.println("Tieup: ");
-  Serial.println(tieupstring);
-  Serial.println("Treadling: ");
-  Serial.println(treadlingstring);
+  // Serial.println("Tieup: ");
+  // Serial.println(tieupstring);
+  // Serial.println("Treadling: ");
+  // Serial.println(treadlingstring);
 }  
+
+
+void iterateKeynum(int n) {
+  if (keynum==keymax) {
+    if (n>0) {
+      keynum = n;
+    }
+    else {
+      keynum = keymax+n;
+    }
+  } else {
+    keynum = keynum+n;
+  }
+}
 
 void readFileTest(char *filename) {
 
@@ -242,10 +268,24 @@ void setup() {
 
   // readFileTest("test.wif");
   pullTieupAndTreadling("test.wif");
-
+  createKey();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  testAnimation();
+  // testAnimation();
+
+  // test by running getnextpick every second
+  getPick();
+  delay(1000);
+  // keynum++;
+  iterateKeynum(1);
+  Serial.println("Next...");
+
+  // next, try having the LED show the pick.
+
+  // if (digitalRead(forwardbuttonpin)==HIGH) {
+  //   Serial.println("Go forward");
+    
+  // }
 }
