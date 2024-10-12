@@ -14,14 +14,14 @@ const int ledpin = 1;
 
 const int forwardbuttonpin = 41;
 const int backbuttonpin = 40;
+const int selectbuttonpin = 39;
 
 // for reading/scanning file
-File myFile;
-const byte buffer_size = 20;  // need to be big enough
-char lineBuffer[buffer_size + 1]; // keep space for a trailing null char
-int bufferIndex;
-char character;
-
+const int maxFiles = 20;
+const int maxFilenameLength = 50;
+char filename[maxFilenameLength];
+String allFilenames[maxFiles]={};
+int filenum=0;
 String tieupstring = "";
 String treadlingstring = "";
 String key = "";
@@ -38,8 +38,8 @@ Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT);
 
 int state = 0;
 // 0: file selection
-// 1: file processing
-// 2: doing the thing (loop)
+// 1: doing the thing (loop)
+// 3: test state
 
 byte drawingMemory[numled*4];         //  4 bytes per LED for RGBW
 DMAMEM byte displayMemory[numled*16]; // 16 bytes per LED for RGBW
@@ -78,18 +78,11 @@ void setCurrentPickToZero() {
   currentPick[15]=0;
 }
 
-void getPick() {
+String getPick() {
   setCurrentPickToZero();
   int position = key.indexOf(String(keynum)+"=")+String(keynum).length()+1;
   int endpos = key.indexOf(";",position);
   String s = key.substring(position,endpos);
-  Serial.println(s);
-  display.clearDisplay();
-  display.setTextColor(SSD1306_WHITE,SSD1306_BLACK);
-  display.setTextSize(2);
-  display.setCursor(10, 5);
-  display.print(s);
-  display.display();
   // Go through the thing
   String thisNumber="";
   for (int i=0; i<s.length(); i++) {
@@ -102,7 +95,9 @@ void getPick() {
       thisNumber+=s.substring(i,i+1);
     }
   }
+  return s;
 }
+
 
 // Key setup
 
@@ -251,6 +246,30 @@ void pullTieupAndTreadling(char *filename){  // get tieup and treadling strings 
   // Serial.println(treadlingstring);
 }  
 
+// filename listing
+void printDirectory(File dir) {
+  int n=0;
+  while (true)
+  {
+    File entry =  dir.openNextFile();
+    if (! entry)
+    {
+      break;
+    }
+    // check if the entry.name() ends in .wif
+    String thisName = entry.name();
+    if (thisName.substring(thisName.length()-3,thisName.length())=="wif" && thisName.substring(0,1)!=".") {
+      if (n<maxFiles) {
+        allFilenames[n]=thisName;
+        n++;
+      } else {
+        Serial.println("more than maximum # wif files found; not listing all of them.");
+      }
+    }
+    entry.close();
+  }
+}
+
 // Key iteration
 void iterateKeynum(int n) {
   if (keynum==keymax) {
@@ -263,6 +282,17 @@ void iterateKeynum(int n) {
   } else {
     keynum = keynum+n;
   }
+}
+
+// Display
+void displayNewText(String s) {
+  Serial.println(s);
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE,SSD1306_BLACK);
+  display.setTextSize(1.5);
+  display.setCursor(10, 5);
+  display.print(s);
+  display.display();
 }
 
 // LED setting
@@ -321,6 +351,7 @@ void testScreenWrite() {
 void setup() {
   pinMode(backbuttonpin, INPUT_PULLDOWN);
   pinMode(forwardbuttonpin, INPUT_PULLDOWN);
+  pinMode(selectbuttonpin, INPUT_PULLDOWN);
 
   // put your setup code here, to run once:
   leds.begin();
@@ -345,11 +376,22 @@ void setup() {
   }
   Serial.println("initialization done.");
 
-  pullTieupAndTreadling("test.wif");
-  createKey();
-  loadKeyInfo("test.wif");
-  // saveKeyInfo("test.wif");
+  // read all the files out from the SD card and store them
+  Serial.println("printing sd files");
+  File root = SD.open("/");
+  printDirectory(root);
+  Serial.println(allFilenames[0]);
 
+  // automatically set filename to first filename found
+  memset(filename, 0, maxFilenameLength);
+  strcpy(filename,allFilenames[filenum].c_str());
+  Serial.println("Setting filename to ");
+  Serial.print(filename);
+  String displayText = String(filename);
+  if (allFilenames[1].length()!=0) {
+    displayText+=" >";
+  }
+  displayNewText(displayText);
 
   // Serial.println(treadlingstring.substring(0,20));
   // Serial.println(key.substring(0,100));
@@ -360,30 +402,86 @@ void loop() {
   // put your main code here, to run repeatedly:
   // testAnimation();
 
-  // test by running getnextpick every second
-  Serial.println(String(keynum));
-  getPick();
-  setNextArray(currentPick);
-  delay(1000);
-  iterateKeynum(1);
-  saveKeyInfo("test.wif");
-
-  if (digitalRead(forwardbuttonpin)==HIGH) {
-    Serial.println("Go forward");
-    iterateKeynum(1);
-    getPick();
+  if (state==3) { // buttonless test state
+    // test by running getnextpick every second
+    Serial.println(String(keynum));
+    String s = getPick();
+    displayNewText(s);
     setNextArray(currentPick);
+    delay(1000);
+    iterateKeynum(1);
     saveKeyInfo("test.wif");
-    delay(500);
   }
 
-  if (digitalRead(backbuttonpin)==HIGH) {
-    Serial.println("Go back");
-    iterateKeynum(-1);
-    getPick();
-    setNextArray(currentPick);
-    saveKeyInfo("test.wif");
-    delay(500);
+  else if (state==0) {
+    // file selection
+    // show filenames with < and > on either side
+    // when you press > button go forward to next filename
+
+    if (digitalRead(forwardbuttonpin)==HIGH) {
+      String displayString = "";
+      if (filenum<maxFiles-1 && allFilenames[filenum+1].length()!=0) {
+        filenum++;
+        // get filename
+        memset(filename, 0, sizeof(filename));
+        strcpy(filename,allFilenames[filenum].c_str());
+        displayString = String(filename)+" >";
+        if (filenum!=0) {
+          displayString = "< "+displayString;
+        }
+        displayNewText(displayString);
+      }
+    }
+
+    if (digitalRead(backbuttonpin)==HIGH) {
+      String displayString = "";
+      if (filenum>0 && allFilenames[filenum-1].length()!=0) {
+        filenum--;
+        // get filename
+        memset(filename, 0, sizeof(filename));
+        strcpy(filename,allFilenames[filenum].c_str());
+        displayString = "< "+String(filename);
+        if (filenum<19) {
+          displayString = displayString+" >";
+        }
+        displayNewText(displayString);
+      }
+    }
+
+    if (digitalRead(selectbuttonpin)==HIGH) {
+      // invert briefly and process this
+      display.invertDisplay(true);
+      pullTieupAndTreadling(filename);
+      createKey();
+      loadKeyInfo(filename);
+      // saveKeyInfo("test.wif");
+      display.invertDisplay(false);
+      state=1;
+    }
+
+  }
+
+
+  else if (state==1) {
+    if (digitalRead(forwardbuttonpin)==HIGH) {
+      Serial.println("Go forward");
+      iterateKeynum(1);
+      String s = getPick();
+      displayNewText(s);
+      setNextArray(currentPick);
+      saveKeyInfo(filename);
+      delay(500);
+    }
+
+    if (digitalRead(backbuttonpin)==HIGH) {
+      Serial.println("Go back");
+      iterateKeynum(-1);
+      String s = getPick();
+      displayNewText(s);
+      setNextArray(currentPick);
+      saveKeyInfo(filename);
+      delay(500);
+    }
   }
 
 }
