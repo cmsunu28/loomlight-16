@@ -97,7 +97,7 @@ void createKey() { // replace treadling values using tieup and put into Key
   while (lastEqualsSign!=treadlingstring.lastIndexOf("=")) {
     // get everything before equals sign and move to key
     int equalspos=treadlingstring.indexOf("=",lastEqualsSign+1);
-    keynumstring=treadlingstring.substring(lastLineReturn+1,equalspos);
+    keynumstring=treadlingstring.substring(lastLineReturn,equalspos);
     // get the tieup number (number between this position and the next line return)
     lastLineReturn=treadlingstring.indexOf(";",lastLineReturn+1);
     String treadle = treadlingstring.substring(equalspos+1,lastLineReturn-1);
@@ -105,7 +105,7 @@ void createKey() { // replace treadling values using tieup and put into Key
     int tieuppos = tieupstring.indexOf(String(treadle.toInt())+"=");
     String thisTieup = tieupstring.substring(tieuppos+String(treadle.toInt()).length()+1,tieupstring.indexOf(";",tieuppos)-1);
     // Serial.println(keynumstring+"="+thisTieup.substring(0,thisTieup.length()-1)+";");
-    key+=keynumstring+"="+thisTieup.substring(0,thisTieup.length()-1)+";";
+    key+=keynumstring+"="+thisTieup.substring(0,thisTieup.length()-1);
     // set last line return and last equals sign
     lastEqualsSign=equalspos;
   }
@@ -182,29 +182,6 @@ void iterateKeynum(int n) {
   }
 }
 
-void readFileTest(char *filename) {
-
-  // open the file. note that only one file can be open at a time,
-  // so you have to close this one before opening another.
-  myFile = SD.open(filename, FILE_READ);
-
-  // re-open the file for reading:
-  myFile = SD.open(filename);
-  if (myFile) {
-    Serial.println(filename);
-
-    // read from the file until there's nothing else in it:
-    while (myFile.available()) {
-      Serial.write(myFile.read());
-    }
-    // close the file:
-    myFile.close();
-  } else {
-    // if the file didn't open, print an error:
-    Serial.println("error opening "+String(filename));
-  }
-}
-
 bool isInArray(int n, int array[], int length) {
   bool found=false;
   for (int i=0; i<length; i++) {
@@ -248,6 +225,9 @@ void testAnimation() {
 }
 
 void setup() {
+  pinMode(backbuttonpin, INPUT_PULLDOWN);
+  pinMode(forwardbuttonpin, INPUT_PULLDOWN);
+
   // put your setup code here, to run once:
   leds.begin();
   leds.setBrightness(200); // 0=off, 255=brightest
@@ -269,6 +249,10 @@ void setup() {
   // readFileTest("test.wif");
   pullTieupAndTreadling("test.wif");
   createKey();
+
+  // Serial.println(treadlingstring.substring(0,20));
+  // Serial.println(key.substring(0,100));
+
 }
 
 void loop() {
@@ -277,15 +261,25 @@ void loop() {
 
   // test by running getnextpick every second
   getPick();
+  setNextArray(currentPick);
   delay(1000);
-  // keynum++;
   iterateKeynum(1);
   Serial.println("Next...");
 
-  // next, try having the LED show the pick.
+  if (digitalRead(forwardbuttonpin)==HIGH) {
+    Serial.println("Go forward");
+    iterateKeynum(1);
+    getPick();
+    setNextArray(currentPick);
+    delay(500);
+  }
 
-  // if (digitalRead(forwardbuttonpin)==HIGH) {
-  //   Serial.println("Go forward");
-    
-  // }
+  if (digitalRead(backbuttonpin)==HIGH) {
+    Serial.println("Go back");
+    iterateKeynum(-1);
+    getPick();
+    setNextArray(currentPick);
+    delay(500);
+  }
+
 }
