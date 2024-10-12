@@ -2,6 +2,9 @@
 #include <SPI.h>
 #include <SD.h>
 #include <WS2812Serial.h>
+#include <Wire.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
 
 // put function declarations here:
 
@@ -26,6 +29,12 @@ int keynum = 1;
 int keymax = 1;
 bool keyLoaded = false;
 int currentPick[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+// the screen
+#define OLED_WIDTH 128
+#define OLED_HEIGHT 32
+#define OLED_ADDR   0x3C
+Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT);
 
 int state = 0;
 // 0: file selection
@@ -75,6 +84,12 @@ void getPick() {
   int endpos = key.indexOf(";",position);
   String s = key.substring(position,endpos);
   Serial.println(s);
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE,SSD1306_BLACK);
+  display.setTextSize(2);
+  display.setCursor(10, 5);
+  display.print(s);
+  display.display();
   // Go through the thing
   String thisNumber="";
   for (int i=0; i<s.length(); i++) {
@@ -272,6 +287,16 @@ void setNextArray(int nextPick[]) {
   }
 }
 
+void testScreenWrite() {
+    // display.invertDisplay(true);
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE,SSD1306_BLACK);
+    display.setTextSize(2);
+    display.setCursor(10, 5);
+    display.print("Test text");
+    display.display();
+}
+
 // void colorWipe(int color, int wait_us) {
 //   for (int i=0; i < leds.numPixels(); i++) {
 //     leds.setPixel(i, color);
@@ -301,11 +326,16 @@ void setup() {
   leds.begin();
   leds.setBrightness(200); // 0=off, 255=brightest
 
+  // screen
+  display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
+  // display.clearDisplay();
+  testScreenWrite();
+
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
+  // while (!Serial) {
+  //   ; // wait for serial port to connect. Needed for native USB port only
+  // }
 
   Serial.print("Initializing SD card...");
 
