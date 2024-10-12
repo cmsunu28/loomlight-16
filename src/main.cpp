@@ -24,13 +24,13 @@ String treadlingstring = "";
 String key = "";
 int keynum = 1;
 int keymax = 1;
+bool keyLoaded = false;
 int currentPick[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 int state = 0;
-// 0: processing file
-// 1: waiting for button press
-// 2: pressed forward button, doing next
-// 3: pressed back button, doing previous
+// 0: file selection
+// 1: file processing
+// 2: doing the thing (loop)
 
 byte drawingMemory[numled*4];         //  4 bytes per LED for RGBW
 DMAMEM byte displayMemory[numled*16]; // 16 bytes per LED for RGBW
@@ -49,6 +49,7 @@ WS2812Serial leds(numled, displayMemory, drawingMemory, ledpin, WS2812_GRBW);
 
 // put function definitions here:
 
+// Pick array setting
 void setCurrentPickToZero() {
   currentPick[0]=0;
   currentPick[1]=0;
@@ -88,6 +89,7 @@ void getPick() {
   }
 }
 
+// Key setup
 
 void createKey() { // replace treadling values using tieup and put into Key
   int lastEqualsSign=0;
@@ -108,10 +110,76 @@ void createKey() { // replace treadling values using tieup and put into Key
     key+=keynumstring+"="+thisTieup.substring(0,thisTieup.length()-1);
     // set last line return and last equals sign
     lastEqualsSign=equalspos;
+    keymax=keynumstring.substring(1,keynumstring.length()).toInt();
   }
-    keymax=keynumstring.toInt();
-  // go through tieup until you find this character
-  // copy the treadling number, equals, and tieup (post equals sign) into the Key
+    keyLoaded=true;
+}
+
+void saveKeyInfo(char *filename) {
+  char newFilename[50];
+  strcpy(newFilename,filename);
+  strcat(newFilename,"data");
+  // delete if it exists; you're resaving
+  SD.remove(newFilename);
+  Serial.print("opening ");
+  Serial.print(newFilename);
+  Serial.println(" to save...");
+  File myFile = SD.open(newFilename, FILE_WRITE);
+  if (myFile) {
+    Serial.print("Writing to sd card...");
+    Serial.println(String(keynum)+"|"+String(keymax));
+    myFile.println(String(keynum)+"|"+String(keymax));
+    // myFile.println(String(keynum)+"|"+String(keymax)+"|"+key);
+    // close the file:
+    myFile.close();
+    Serial.println("done.");
+  } else {
+    // if the file didn't open, print an error:
+    Serial.println("error opening file");
+  }
+}
+
+bool loadKeyInfo(char *filename) {
+  char newFilename[50];
+  strcpy(newFilename,filename);
+  strcat(newFilename,"data");
+  Serial.print("attempting to open ");
+  Serial.print(String(newFilename));
+  Serial.println(" to load...");
+  File myFile = SD.open(newFilename);
+  if (myFile) {
+    Serial.println("File exists, reading data...");
+    // process save file by splitting by "|" and then first is keynum, second is keymax, third is key
+      String Buffer_Read_Line = "";
+      int LastPosition=0;
+      int iterator=0;
+      int totalBytes = myFile.size();
+      while (myFile.available()){
+        for(LastPosition=0; LastPosition<= totalBytes; LastPosition++){
+          char character=myFile.read();
+          Buffer_Read_Line=Buffer_Read_Line+character;
+          if(String(character)=="|") {
+            if (iterator==0) {
+              Serial.println(Buffer_Read_Line.substring(0,Buffer_Read_Line.length()-1).toInt());
+              keynum=Buffer_Read_Line.substring(0,Buffer_Read_Line.length()-1).toInt();
+            }
+            else if (iterator==1) {
+              Serial.println(Buffer_Read_Line.substring(0,Buffer_Read_Line.length()-1).toInt());
+              keymax=Buffer_Read_Line.substring(0,Buffer_Read_Line.length()-1).toInt();
+            }
+            // else if (iterator==2) {
+            //   key=Buffer_Read_Line;
+            // }
+            Buffer_Read_Line="";
+            iterator++;
+          }
+        }
+      }
+    return true;
+  } else {
+    Serial.println("error opening file; data file may not exist");
+    return false;
+  }
 }
 
 void pullTieupAndTreadling(char *filename){  // get tieup and treadling strings from file 
@@ -168,7 +236,7 @@ void pullTieupAndTreadling(char *filename){  // get tieup and treadling strings 
   // Serial.println(treadlingstring);
 }  
 
-
+// Key iteration
 void iterateKeynum(int n) {
   if (keynum==keymax) {
     if (n>0) {
@@ -182,6 +250,7 @@ void iterateKeynum(int n) {
   }
 }
 
+// LED setting
 bool isInArray(int n, int array[], int length) {
   bool found=false;
   for (int i=0; i<length; i++) {
@@ -203,26 +272,26 @@ void setNextArray(int nextPick[]) {
   }
 }
 
-void colorWipe(int color, int wait_us) {
-  for (int i=0; i < leds.numPixels(); i++) {
-    leds.setPixel(i, color);
-    leds.show();
-    delayMicroseconds(wait_us);
-  }
-}
+// void colorWipe(int color, int wait_us) {
+//   for (int i=0; i < leds.numPixels(); i++) {
+//     leds.setPixel(i, color);
+//     leds.show();
+//     delayMicroseconds(wait_us);
+//   }
+// }
 
-void testAnimation() {
-    // change all the LEDs in 1.5 seconds
-  int microsec = 1500000 / leds.numPixels();
+// void testAnimation() {
+//     // change all the LEDs in 1.5 seconds
+//   int microsec = 1500000 / leds.numPixels();
 
-  colorWipe(RED, microsec);
-  colorWipe(GREEN, microsec);
-  colorWipe(BLUE, microsec);
-  colorWipe(YELLOW, microsec);
-  colorWipe(PINK, microsec);
-  colorWipe(ORANGE, microsec);
-  colorWipe(WHITE, microsec);
-}
+//   colorWipe(RED, microsec);
+//   colorWipe(GREEN, microsec);
+//   colorWipe(BLUE, microsec);
+//   colorWipe(YELLOW, microsec);
+//   colorWipe(PINK, microsec);
+//   colorWipe(ORANGE, microsec);
+//   colorWipe(WHITE, microsec);
+// }
 
 void setup() {
   pinMode(backbuttonpin, INPUT_PULLDOWN);
@@ -246,9 +315,11 @@ void setup() {
   }
   Serial.println("initialization done.");
 
-  // readFileTest("test.wif");
   pullTieupAndTreadling("test.wif");
   createKey();
+  loadKeyInfo("test.wif");
+  // saveKeyInfo("test.wif");
+
 
   // Serial.println(treadlingstring.substring(0,20));
   // Serial.println(key.substring(0,100));
@@ -260,17 +331,19 @@ void loop() {
   // testAnimation();
 
   // test by running getnextpick every second
+  Serial.println(String(keynum));
   getPick();
   setNextArray(currentPick);
   delay(1000);
   iterateKeynum(1);
-  Serial.println("Next...");
+  saveKeyInfo("test.wif");
 
   if (digitalRead(forwardbuttonpin)==HIGH) {
     Serial.println("Go forward");
     iterateKeynum(1);
     getPick();
     setNextArray(currentPick);
+    saveKeyInfo("test.wif");
     delay(500);
   }
 
@@ -279,6 +352,7 @@ void loop() {
     iterateKeynum(-1);
     getPick();
     setNextArray(currentPick);
+    saveKeyInfo("test.wif");
     delay(500);
   }
 
