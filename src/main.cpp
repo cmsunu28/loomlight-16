@@ -1,14 +1,14 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <SD.h>
-#include <WS2812Serial.h>
+#include <Adafruit_NeoPixel.h>
 #include <Wire.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
 
 // put function declarations here:
 
-const int numled = 16;
+const int numled = 17;
 const int ledpin = 1;
 //   Teensy 4.1:  1, 8, 14, 17, 20, 24, 29, 35, 47, 53
 
@@ -44,17 +44,7 @@ int state = 0;
 byte drawingMemory[numled*4];         //  4 bytes per LED for RGBW
 DMAMEM byte displayMemory[numled*16]; // 16 bytes per LED for RGBW
 
-WS2812Serial leds(numled, displayMemory, drawingMemory, ledpin, WS2812_GRBW);
-
-#define RED    0x00FF0000
-#define GREEN  0x0000FF00
-#define BLUE   0x000000FF
-#define YELLOW 0x00FFD000
-#define PINK   0x44F00080
-#define ORANGE 0x00FF4200
-#define WHITE  0xAA000000
-#define OFF 0x00000000
-
+Adafruit_NeoPixel leds(numled, ledpin, NEO_GRB+NEO_KHZ400);
 
 // put function definitions here:
 
@@ -307,14 +297,16 @@ bool isInArray(int n, int array[], int length) {
 }
 
 void setNextArray(int nextPick[]) {
+  leds.clear();
   for(int i=0; i<16; i++) {
     if (isInArray(i,nextPick,16)) {
-      leds.setPixel(i,GREEN);
+      leds.setPixelColor(i,leds.Color(0,150,0));
     }
     else {
-      leds.setPixel(i,RED);
+      leds.setPixelColor(i,leds.Color(150,0,0));
     }
   }
+  leds.show();
 }
 
 void testScreenWrite() {
@@ -327,47 +319,37 @@ void testScreenWrite() {
     display.display();
 }
 
-// void colorWipe(int color, int wait_us) {
-//   for (int i=0; i < leds.numPixels(); i++) {
-//     leds.setPixel(i, color);
-//     leds.show();
-//     delayMicroseconds(wait_us);
-//   }
-// }
-
-// void testAnimation() {
-//     // change all the LEDs in 1.5 seconds
-//   int microsec = 1500000 / leds.numPixels();
-
-//   colorWipe(RED, microsec);
-//   colorWipe(GREEN, microsec);
-//   colorWipe(BLUE, microsec);
-//   colorWipe(YELLOW, microsec);
-//   colorWipe(PINK, microsec);
-//   colorWipe(ORANGE, microsec);
-//   colorWipe(WHITE, microsec);
-// }
+void colorWipe(uint32_t color, int wait) {
+  for(int i=0; i<leds.numPixels(); i++) { // For each pixel in strip...
+    leds.setPixelColor(i, color);         //  Set pixel's color (in RAM)
+    leds.show();                          //  Update strip to match
+    delay(wait);                           //  Pause for a moment
+  }
+}
 
 void setup() {
+  
   pinMode(backbuttonpin, INPUT_PULLDOWN);
   pinMode(forwardbuttonpin, INPUT_PULLDOWN);
   pinMode(selectbuttonpin, INPUT_PULLDOWN);
 
+  pinMode(ledpin, OUTPUT);
+
   // put your setup code here, to run once:
   leds.begin();
-  leds.setBrightness(200); // 0=off, 255=brightest
+  leds.show();
+  leds.setBrightness(100);
+  leds.clear();
+  colorWipe(leds.Color(255,   0,   0), 50); // Red
+  colorWipe(leds.Color(  0, 255,   0), 50); // Green
+  colorWipe(leds.Color(  0,   0, 255), 50); // Blue
 
   // screen
   display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
   // display.clearDisplay();
   testScreenWrite();
 
-  // Open serial communications and wait for port to open:
   Serial.begin(9600);
-  // while (!Serial) {
-  //   ; // wait for serial port to connect. Needed for native USB port only
-  // }
-
   Serial.print("Initializing SD card...");
 
   if (!SD.begin(BUILTIN_SDCARD)) {
@@ -400,20 +382,8 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  // testAnimation();
 
-  if (state==3) { // buttonless test state
-    // test by running getnextpick every second
-    Serial.println(String(keynum));
-    String s = getPick();
-    displayNewText(s);
-    setNextArray(currentPick);
-    delay(1000);
-    iterateKeynum(1);
-    saveKeyInfo("test.wif");
-  }
-
-  else if (state==0) {
+  if (state==0) {
     // file selection
     // show filenames with < and > on either side
     // when you press > button go forward to next filename
