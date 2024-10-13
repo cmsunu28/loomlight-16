@@ -15,15 +15,11 @@ const int ledpin = 8;
 byte drawingMemory[numled*3];         //  3 bytes per LED
 DMAMEM byte displayMemory[numled*12]; // 12 bytes per LED
 
-WS2812Serial leds(numled, displayMemory, drawingMemory, ledpin, WS2812_RGB);
+WS2812Serial leds(numled, displayMemory, drawingMemory, ledpin, WS2812_GRB);
 
-#define RED    0xFF0000
-#define GREEN  0x00FF00
-#define BLUE   0x0000FF
-#define YELLOW 0xFFFF00
-#define PINK   0xFF1088
-#define ORANGE 0xE05800
-#define WHITE  0xFFFFFF
+#define FLIP_UP    0xcd6133
+#define FLIP_DOWN  0x218c74
+#define NEUTRAL  0x84817a
 
 const int forwardbuttonpin = 41;
 const int backbuttonpin = 40;
@@ -42,6 +38,7 @@ int keynum = 1;
 int keymax = 1;
 bool keyLoaded = false;
 int currentPick[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+int lastPick[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 // the screen
 #define OLED_WIDTH 128
@@ -57,27 +54,15 @@ int state = 0;
 // put function definitions here:
 
 // Pick array setting
-void setCurrentPickToZero() {
-  currentPick[0]=0;
-  currentPick[1]=0;
-  currentPick[2]=0;
-  currentPick[3]=0;
-  currentPick[4]=0;
-  currentPick[5]=0;
-  currentPick[6]=0;
-  currentPick[7]=0;
-  currentPick[8]=0;
-  currentPick[9]=0;
-  currentPick[10]=0;
-  currentPick[11]=0;
-  currentPick[12]=0;
-  currentPick[13]=0;
-  currentPick[14]=0;
-  currentPick[15]=0;
+void shufflePicks() { // set last pick to current pick and current pick to 0
+  for (int x=0; x<16; x++) {
+    lastPick[x]=currentPick[x];
+    currentPick[x]=0;
+  }
 }
 
 String getPick() {
-  setCurrentPickToZero();
+  shufflePicks();
   int position = key.indexOf(String(keynum)+"=")+String(keynum).length()+1;
   int endpos = key.indexOf(";",position);
   String s = key.substring(position,endpos);
@@ -322,14 +307,17 @@ void displayNewText(String s) {
 
 // LED setting
 
-void setNextArray(int nextPick[]) {
+void setPickInLeds() {
   leds.clear();
   for(int i=0; i<16; i++) {
     if (currentPick[i]==1) {
-      leds.setPixel(i,GREEN);
+      leds.setPixel(i,FLIP_DOWN);
+    }
+    else if (lastPick[i]==1) {
+      leds.setPixel(i,FLIP_UP);
     }
     else {
-      leds.setPixel(i,RED);
+      leds.setPixel(i,NEUTRAL);
     }
   }
   leds.show();
@@ -364,14 +352,13 @@ void setup() {
   // put your setup code here, to run once:
   leds.begin();
   leds.show();
-  leds.setBrightness(100);
+  leds.setBrightness(50);
   leds.clear();
   int microsec = 1500000 / leds.numPixels();
 
-  colorWipe(RED, microsec);
-  colorWipe(GREEN, microsec);
-  colorWipe(BLUE, microsec);
-  colorWipe(WHITE, microsec);
+  colorWipe(FLIP_DOWN, microsec);
+  colorWipe(FLIP_UP, microsec);
+  colorWipe(NEUTRAL, microsec);
 
   // screen
   display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
@@ -457,7 +444,7 @@ void loop() {
       display.invertDisplay(false);
       String s = getPick();
       displayNewText(String(keynum)+": "+s);
-      setNextArray(currentPick);
+      setPickInLeds();
       state=1;
     }
 
@@ -470,7 +457,7 @@ void loop() {
       iterateKeynum(1);
       String s = getPick();
       displayNewText(String(keynum)+": "+s);
-      setNextArray(currentPick);
+      setPickInLeds();
       saveKeyInfo(filename);
       delay(500);
     }
@@ -480,7 +467,7 @@ void loop() {
       iterateKeynum(-1);
       String s = getPick();
       displayNewText(String(keynum)+": "+s);
-      setNextArray(currentPick);
+      setPickInLeds();
       saveKeyInfo(filename);
       delay(500);
     }
