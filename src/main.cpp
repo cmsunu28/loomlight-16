@@ -371,9 +371,6 @@ void setup() {
   colorWipe(RED, microsec);
   colorWipe(GREEN, microsec);
   colorWipe(BLUE, microsec);
-  colorWipe(YELLOW, microsec);
-  colorWipe(PINK, microsec);
-  colorWipe(ORANGE, microsec);
   colorWipe(WHITE, microsec);
 
   // screen
@@ -458,6 +455,9 @@ void loop() {
       loadKeyInfo(filename);
       // saveKeyInfo("test.wif");
       display.invertDisplay(false);
+      String s = getPick();
+      displayNewText(String(keynum)+": "+s);
+      setNextArray(currentPick);
       state=1;
     }
 
@@ -469,7 +469,7 @@ void loop() {
       Serial.println("Go forward");
       iterateKeynum(1);
       String s = getPick();
-      displayNewText(s);
+      displayNewText(String(keynum)+": "+s);
       setNextArray(currentPick);
       saveKeyInfo(filename);
       delay(500);
@@ -479,7 +479,7 @@ void loop() {
       Serial.println("Go back");
       iterateKeynum(-1);
       String s = getPick();
-      displayNewText(s);
+      displayNewText(String(keynum)+": "+s);
       setNextArray(currentPick);
       saveKeyInfo(filename);
       delay(500);
