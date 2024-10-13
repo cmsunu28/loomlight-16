@@ -73,11 +73,13 @@ String getPick() {
   int position = key.indexOf(String(keynum)+"=")+String(keynum).length()+1;
   int endpos = key.indexOf(";",position);
   String s = key.substring(position,endpos);
+  s+=",";
   // Go through the thing
   String thisNumber="";
-  for (int i=0; i<s.length(); i++) {
-    if (s.substring(i,i+1)=",") {
+  for (unsigned int i=0; i<s.length(); i++) {
+    if (s.substring(i,i+1)==",") {
       int thisLever=thisNumber.toInt();
+      // Serial.println(thisNumber);
       currentPick[thisLever-1]=1;
       thisNumber="";
     }
@@ -85,6 +87,22 @@ String getPick() {
       thisNumber+=s.substring(i,i+1);
     }
   }
+  // Serial.print(currentPick[0]);
+  // Serial.print(currentPick[1]);
+  // Serial.print(currentPick[2]);
+  // Serial.print(currentPick[3]);
+  // Serial.print(currentPick[4]);
+  // Serial.print(currentPick[5]);
+  // Serial.print(currentPick[6]);
+  // Serial.print(currentPick[7]);
+  // Serial.print(currentPick[8]);
+  // Serial.print(currentPick[9]);
+  // Serial.print(currentPick[10]);
+  // Serial.print(currentPick[11]);
+  // Serial.print(currentPick[12]);
+  // Serial.print(currentPick[13]);
+  // Serial.print(currentPick[14]);
+  // Serial.print(currentPick[15]);
   return s;
 }
 
