@@ -287,7 +287,16 @@ void iterateKeynum(int n) {
     else {
       keynum = keymax+n;
     }
-  } else {
+  } else if (keynum==1) {
+    if (n==-1) {
+      keynum = keymax;
+    } else if (n<-1) {
+      keynum = keymax+1+n;
+    } else {
+      keynum = keynum+n;
+    }
+  }
+  else {
     keynum = keynum+n;
   }
 }
