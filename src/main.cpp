@@ -417,6 +417,7 @@ void loop() {
         }
         displayNewText(displayString);
       }
+      delay(200);
     }
 
     if (digitalRead(backbuttonpin)==HIGH) {
@@ -432,6 +433,7 @@ void loop() {
         }
         displayNewText(displayString);
       }
+      delay(200);
     }
 
     if (digitalRead(selectbuttonpin)==HIGH) {
