@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <SD.h>
-#include <Adafruit_NeoPixel.h>
+#include <WS2812Serial.h>
 #include <Wire.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
@@ -9,8 +9,21 @@
 // put function declarations here:
 
 const int numled = 17;
-const int ledpin = 1;
+const int ledpin = 8;
 //   Teensy 4.1:  1, 8, 14, 17, 20, 24, 29, 35, 47, 53
+
+byte drawingMemory[numled*3];         //  3 bytes per LED
+DMAMEM byte displayMemory[numled*12]; // 12 bytes per LED
+
+WS2812Serial leds(numled, displayMemory, drawingMemory, ledpin, WS2812_RGB);
+
+#define RED    0xFF0000
+#define GREEN  0x00FF00
+#define BLUE   0x0000FF
+#define YELLOW 0xFFFF00
+#define PINK   0xFF1088
+#define ORANGE 0xE05800
+#define WHITE  0xFFFFFF
 
 const int forwardbuttonpin = 41;
 const int backbuttonpin = 40;
@@ -40,11 +53,6 @@ int state = 0;
 // 0: file selection
 // 1: doing the thing (loop)
 // 3: test state
-
-byte drawingMemory[numled*4];         //  4 bytes per LED for RGBW
-DMAMEM byte displayMemory[numled*16]; // 16 bytes per LED for RGBW
-
-Adafruit_NeoPixel leds(numled, ledpin, NEO_GRB+NEO_KHZ400);
 
 // put function definitions here:
 
@@ -313,24 +321,15 @@ void displayNewText(String s) {
 }
 
 // LED setting
-bool isInArray(int n, int array[], int length) {
-  bool found=false;
-  for (int i=0; i<length; i++) {
-    if (n==array[i]) {
-      found=true;
-    }
-  }
-  return found;
-}
 
 void setNextArray(int nextPick[]) {
   leds.clear();
   for(int i=0; i<16; i++) {
-    if (isInArray(i,nextPick,16)) {
-      leds.setPixelColor(i,leds.Color(0,150,0));
+    if (currentPick[i]==1) {
+      leds.setPixel(i,GREEN);
     }
     else {
-      leds.setPixelColor(i,leds.Color(150,0,0));
+      leds.setPixel(i,RED);
     }
   }
   leds.show();
@@ -346,11 +345,11 @@ void testScreenWrite() {
     display.display();
 }
 
-void colorWipe(uint32_t color, int wait) {
-  for(int i=0; i<leds.numPixels(); i++) { // For each pixel in strip...
-    leds.setPixelColor(i, color);         //  Set pixel's color (in RAM)
-    leds.show();                          //  Update strip to match
-    delay(wait);                           //  Pause for a moment
+void colorWipe(int color, int wait) {
+  for (int i=0; i < leds.numPixels(); i++) {
+    leds.setPixel(i, color);
+    leds.show();
+    delayMicroseconds(wait);
   }
 }
 
@@ -367,9 +366,15 @@ void setup() {
   leds.show();
   leds.setBrightness(100);
   leds.clear();
-  colorWipe(leds.Color(255,   0,   0), 50); // Red
-  colorWipe(leds.Color(  0, 255,   0), 50); // Green
-  colorWipe(leds.Color(  0,   0, 255), 50); // Blue
+  int microsec = 1500000 / leds.numPixels();
+
+  colorWipe(RED, microsec);
+  colorWipe(GREEN, microsec);
+  colorWipe(BLUE, microsec);
+  colorWipe(YELLOW, microsec);
+  colorWipe(PINK, microsec);
+  colorWipe(ORANGE, microsec);
+  colorWipe(WHITE, microsec);
 
   // screen
   display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
