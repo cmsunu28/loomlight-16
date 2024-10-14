@@ -18,8 +18,10 @@ DMAMEM byte displayMemory[numled*12]; // 12 bytes per LED
 WS2812Serial leds(numled, displayMemory, drawingMemory, ledpin, WS2812_GRB);
 
 #define FLIP_UP    0xcd6133
+#define FLIP_UP2    0xb33939
 #define FLIP_DOWN  0x218c74
-#define NEUTRAL  0x84817a
+#define FLIP_DOWN2  0x227093
+#define NEUTRAL  0x888888
 
 const int forwardbuttonpin = 41;
 const int backbuttonpin = 40;
@@ -299,8 +301,8 @@ void displayNewText(String s) {
   Serial.println(s);
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE,SSD1306_BLACK);
-  display.setTextSize(1.5);
-  display.setCursor(10, 5);
+  display.setTextSize(2);
+  display.setCursor(0, 0);
   display.print(s);
   display.display();
 }
@@ -311,11 +313,18 @@ void setPickInLeds() {
   leds.clear();
   for(int i=0; i<16; i++) {
     if (currentPick[i]==1) {
-      leds.setPixel(i,FLIP_DOWN);
+      if (keynum%2==0) {
+        leds.setPixel(i,FLIP_DOWN);
+      } else {
+        leds.setPixel(i,FLIP_DOWN2);
+      }
     }
     else if (lastPick[i]==1) {
-      leds.setPixel(i,FLIP_UP);
-    }
+      if (keynum%2==0) {
+        leds.setPixel(i,FLIP_UP);
+      } else {
+        leds.setPixel(i,FLIP_UP2);
+      }    }
     else {
       leds.setPixel(i,NEUTRAL);
     }
@@ -329,7 +338,7 @@ void testScreenWrite() {
     display.setTextColor(SSD1306_WHITE,SSD1306_BLACK);
     display.setTextSize(2);
     display.setCursor(10, 5);
-    display.print("Test text");
+    display.print("Loomlight v1.0");
     display.display();
 }
 
@@ -354,10 +363,13 @@ void setup() {
   leds.show();
   leds.setBrightness(50);
   leds.clear();
-  int microsec = 1500000 / leds.numPixels();
+  int microsec = 750000 / leds.numPixels();
 
   colorWipe(FLIP_DOWN, microsec);
   colorWipe(FLIP_UP, microsec);
+  colorWipe(NEUTRAL, microsec);
+  colorWipe(FLIP_DOWN2, microsec);
+  colorWipe(FLIP_UP2, microsec);
   colorWipe(NEUTRAL, microsec);
 
   // screen
