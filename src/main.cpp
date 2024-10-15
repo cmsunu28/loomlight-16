@@ -26,6 +26,8 @@ WS2812Serial leds(numled, displayMemory, drawingMemory, ledpin, WS2812_GRB);
 const int forwardbuttonpin = 41;
 const int backbuttonpin = 40;
 const int selectbuttonpin = 39;
+int forwardButtonState = 0; // 0 not pressed 1 pressed 2 just released
+int backButtonState = 0;
 
 // for reading/scanning file
 const int maxFiles = 20;
@@ -411,12 +413,27 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
+  // button presses
+  if (digitalRead(backbuttonpin)==HIGH && backButtonState==0) {
+    backButtonState=1;
+  }
+  if (digitalRead(backbuttonpin)==LOW && backButtonState==1) {
+    backButtonState=2;
+  }
+  if (digitalRead(forwardbuttonpin)==HIGH && forwardButtonState==0) {
+    forwardButtonState=1;
+  }
+  if (digitalRead(forwardbuttonpin)==LOW && forwardButtonState==1) {
+    forwardButtonState=2;
+  }
+  
+
   if (state==0) {
     // file selection
     // show filenames with < and > on either side
     // when you press > button go forward to next filename
 
-    if (digitalRead(forwardbuttonpin)==HIGH) {
+    if (forwardButtonState==2 && backButtonState==0) {
       String displayString = "";
       if (filenum<maxFiles-1 && allFilenames[filenum+1].length()!=0) {
         filenum++;
@@ -429,10 +446,12 @@ void loop() {
         }
         displayNewText(displayString);
       }
+      forwardButtonState=0;
+      Serial.println("Pressed forward");
       delay(200);
     }
 
-    if (digitalRead(backbuttonpin)==HIGH) {
+    else if (backButtonState==2 && forwardButtonState==0) {
       String displayString = "";
       if (filenum>0 && allFilenames[filenum-1].length()!=0) {
         filenum--;
@@ -445,44 +464,51 @@ void loop() {
         }
         displayNewText(displayString);
       }
+      Serial.println("Pressed back");
+      backButtonState=0;
       delay(200);
     }
-
-    if (digitalRead(selectbuttonpin)==HIGH) {
-      // invert briefly and process this
-      display.invertDisplay(true);
-      pullTieupAndTreadling(filename);
-      createKey();
-      loadKeyInfo(filename);
-      // saveKeyInfo("test.wif");
-      display.invertDisplay(false);
-      String s = getPick();
-      displayNewText(String(keynum)+": "+s);
-      setPickInLeds();
-      state=1;
+    else if ((backButtonState==1 || backButtonState==2) && (forwardButtonState==1 || forwardButtonState==2) ) { // back button and forward button both have a state of 1 or 2
+        // invert briefly and process this
+        display.invertDisplay(true);
+        pullTieupAndTreadling(filename);
+        createKey();
+        loadKeyInfo(filename);
+        // saveKeyInfo("test.wif");
+        display.invertDisplay(false);
+        String s = getPick();
+        displayNewText(String(keynum)+": "+s);
+        setPickInLeds();
+        Serial.println("Pressed forward and back");
+        backButtonState=0;
+        forwardButtonState=0;
+        state=1;
     }
+
 
   }
 
 
   else if (state==1) {
-    if (digitalRead(forwardbuttonpin)==HIGH) {
+    if (forwardButtonState==2) {
       Serial.println("Go forward");
       iterateKeynum(1);
       String s = getPick();
       displayNewText(String(keynum)+": "+s);
       setPickInLeds();
       saveKeyInfo(filename);
+      forwardButtonState=0;
       delay(500);
     }
 
-    if (digitalRead(backbuttonpin)==HIGH) {
+    if (backButtonState==2) {
       Serial.println("Go back");
       iterateKeynum(-1);
       String s = getPick();
       displayNewText(String(keynum)+": "+s);
       setPickInLeds();
       saveKeyInfo(filename);
+      backButtonState=0;
       delay(500);
     }
   }
