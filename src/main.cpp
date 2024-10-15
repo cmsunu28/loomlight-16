@@ -25,7 +25,6 @@ WS2812Serial leds(numled, displayMemory, drawingMemory, ledpin, WS2812_GRB);
 
 const int forwardbuttonpin = 41;
 const int backbuttonpin = 40;
-const int selectbuttonpin = 39;
 int forwardButtonState = 0; // 0 not pressed 1 pressed 2 just released
 int backButtonState = 0;
 
@@ -356,7 +355,6 @@ void setup() {
   
   pinMode(backbuttonpin, INPUT_PULLDOWN);
   pinMode(forwardbuttonpin, INPUT_PULLDOWN);
-  pinMode(selectbuttonpin, INPUT_PULLDOWN);
 
   pinMode(ledpin, OUTPUT);
 
