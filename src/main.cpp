@@ -8,7 +8,7 @@
 
 // put function declarations here:
 
-const int numled = 17;
+const int numled = 16;
 const int ledpin = 8;
 //   Teensy 4.1:  1, 8, 14, 17, 20, 24, 29, 35, 47, 53
 
@@ -25,7 +25,7 @@ WS2812Serial leds(numled, displayMemory, drawingMemory, ledpin, WS2812_GRB);
 
 const int forwardbuttonpin = 23;
 const int backbuttonpin = 33;
-int forwardButtonState = 0; // 0 not pressed 1 pressed 2 just released
+int forwardButtonState = 0; // 0: not pressed. 1: pressed. 2: debounced. 3: just released
 int backButtonState = 0;
 
 // for reading/scanning file
@@ -113,20 +113,27 @@ void createKey() { // replace treadling values using tieup and put into Key
   while (lastEqualsSign!=treadlingstring.lastIndexOf("=")) {
     // get everything before equals sign and move to key
     int equalspos=treadlingstring.indexOf("=",lastEqualsSign+1);
-    keynumstring=treadlingstring.substring(lastLineReturn,equalspos);
+    keynumstring=treadlingstring.substring(lastLineReturn,equalspos).trim();
     // get the tieup number (number between this position and the next line return)
     lastLineReturn=treadlingstring.indexOf(";",lastLineReturn+1);
-    String treadle = treadlingstring.substring(equalspos+1,lastLineReturn-1);
+    String treadle = treadlingstring.substring(equalspos+1,lastLineReturn).trim();
     // get this part from the tieup by using treadle+"="
     int tieuppos = tieupstring.indexOf(String(treadle.toInt())+"=");
-    String thisTieup = tieupstring.substring(tieuppos+String(treadle.toInt()).length()+1,tieupstring.indexOf(";",tieuppos)-1);
+    String thisTieup = tieupstring.substring(tieuppos+String(treadle.toInt()).length()+1,tieupstring.indexOf(";",tieuppos)).trim();
+    // Serial.println(thisTieup);
     // Serial.println(keynumstring+"="+thisTieup.substring(0,thisTieup.length()-1)+";");
-    key+=keynumstring+"="+thisTieup.substring(0,thisTieup.length()-1);
+    key+=keynumstring+"="+thisTieup;
     // set last line return and last equals sign
     lastEqualsSign=equalspos;
     keymax=keynumstring.substring(1,keynumstring.length()).toInt();
   }
+  if (key.substring(key.length()-1,key.length())!=";") {
+    key=key+";";
+  }
     keyLoaded=true;
+    // Serial.println(tieupstring);
+    // Serial.println(treadlingstring);
+    // Serial.println(key);
 }
 
 void saveKeyInfo(char *filename) {
@@ -230,18 +237,36 @@ void pullTieupAndTreadling(char *filename){  // get tieup and treadling strings 
           writeToTieUp=false;
         }
         else {
-          if (writeToTieUp) {
-            // write the buffer to tie-up string
-            tieupstring+=String(Buffer_Read_Line)+";";
-          }
+          if (String(Buffer_Read_Line).trim()!="") {
+            if (writeToTieUp) {
+              // write the buffer to tie-up string
+              tieupstring+=String(Buffer_Read_Line).trim()+";";
+              tieupstring=tieupstring.trim();
+            }
 
-          if (writeToTreadling) {
-            treadlingstring+=String(Buffer_Read_Line)+";";
+            if (writeToTreadling) {
+              treadlingstring+=String(Buffer_Read_Line).trim()+";";
+              treadlingstring=treadlingstring.trim();
+            }
           }
         }
         Buffer_Read_Line="";      //string to 0
       }
     }
+    // repeat again at the end because you're at the end of the line
+    if (String(Buffer_Read_Line).trim()!="") {
+      if (writeToTieUp) {
+        // write the buffer to tie-up string
+        tieupstring+=String(Buffer_Read_Line).substring(0,String(Buffer_Read_Line).length()-1).trim()+";";
+        tieupstring=tieupstring.trim();
+      }
+
+      if (writeToTreadling) {
+        treadlingstring+=String(Buffer_Read_Line).substring(0,String(Buffer_Read_Line).length()-1).trim()+";";
+        treadlingstring=treadlingstring.trim();
+      }
+    }
+
   }
   printFile.close();
   // Serial.println("Tieup: ");
@@ -320,7 +345,7 @@ void setPickInLeds() {
         leds.setPixel(i,FLIP_DOWN2);
       }
     }
-    else if (lastPick[i]==1) {
+    else if (currentPick[i]==0 && lastPick[i]==1) {
       if (keynum%2==0) {
         leds.setPixel(i,FLIP_UP);
       } else {
@@ -416,13 +441,19 @@ void loop() {
     backButtonState=1;
   }
   if (digitalRead(backbuttonpin)==LOW && backButtonState==1) {
-    backButtonState=2;
+    delay(200);
+    if(digitalRead(backbuttonpin)==LOW) {
+      backButtonState=2;
+    }
   }
   if (digitalRead(forwardbuttonpin)==HIGH && forwardButtonState==0) {
     forwardButtonState=1;
   }
   if (digitalRead(forwardbuttonpin)==LOW && forwardButtonState==1) {
-    forwardButtonState=2;
+    delay(200);
+    if(digitalRead(forwardbuttonpin)==LOW) {
+      forwardButtonState=2;
+    }
   }
   
 
@@ -466,7 +497,7 @@ void loop() {
       backButtonState=0;
       delay(200);
     }
-    else if ((backButtonState==1 || backButtonState==2) && (forwardButtonState==1 || forwardButtonState==2) ) { // back button and forward button both have a state of 1 or 2
+    else if ((backButtonState==2 || backButtonState==1) && (forwardButtonState==2 || forwardButtonState==1) && !(forwardButtonState==1 && backButtonState==1) ) { // back button and forward button both have a state of 1 or 2
         // invert briefly and process this
         display.invertDisplay(true);
         pullTieupAndTreadling(filename);
@@ -481,6 +512,7 @@ void loop() {
         backButtonState=0;
         forwardButtonState=0;
         state=1;
+        delay(200);
     }
 
 
@@ -488,7 +520,9 @@ void loop() {
 
 
   else if (state==1) {
-    if (forwardButtonState==2) {
+    // Serial.print(String(backButtonState)+" ");
+    // Serial.println(String(forwardButtonState)+" ");
+    if (forwardButtonState==2 && backButtonState==0) {
       Serial.println("Go forward");
       iterateKeynum(1);
       String s = getPick();
@@ -499,7 +533,7 @@ void loop() {
       delay(500);
     }
 
-    if (backButtonState==2) {
+    else if (backButtonState==2 && forwardButtonState==0) {
       Serial.println("Go back");
       iterateKeynum(-1);
       String s = getPick();
@@ -508,6 +542,11 @@ void loop() {
       saveKeyInfo(filename);
       backButtonState=0;
       delay(500);
+    }
+
+    else if (backButtonState==2 && forwardButtonState==2) {
+      backButtonState=0;
+      forwardButtonState=0;
     }
   }
 
