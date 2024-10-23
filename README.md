@@ -29,3 +29,6 @@ In addition to what is available in the repo, you will need:
 
 ## Wiring
 ![diagram](wiring.png)
+
+## Other Stuff
+This repo is (c) Christine Sunu, 2024. It is available to the public for non-commercial use only.
