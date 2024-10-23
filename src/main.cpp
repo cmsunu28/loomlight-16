@@ -75,7 +75,6 @@ String getPick() {
   for (unsigned int i=0; i<s.length(); i++) {
     if (s.substring(i,i+1)==",") {
       int thisLever=thisNumber.toInt();
-      // Serial.println(thisNumber);
       currentPick[thisLever-1]=1;
       thisNumber="";
     }
@@ -83,22 +82,6 @@ String getPick() {
       thisNumber+=s.substring(i,i+1);
     }
   }
-  // Serial.print(currentPick[0]);
-  // Serial.print(currentPick[1]);
-  // Serial.print(currentPick[2]);
-  // Serial.print(currentPick[3]);
-  // Serial.print(currentPick[4]);
-  // Serial.print(currentPick[5]);
-  // Serial.print(currentPick[6]);
-  // Serial.print(currentPick[7]);
-  // Serial.print(currentPick[8]);
-  // Serial.print(currentPick[9]);
-  // Serial.print(currentPick[10]);
-  // Serial.print(currentPick[11]);
-  // Serial.print(currentPick[12]);
-  // Serial.print(currentPick[13]);
-  // Serial.print(currentPick[14]);
-  // Serial.print(currentPick[15]);
   return s;
 }
 
@@ -120,8 +103,6 @@ void createKey() { // replace treadling values using tieup and put into Key
     // get this part from the tieup by using treadle+"="
     int tieuppos = tieupstring.indexOf(String(treadle.toInt())+"=");
     String thisTieup = tieupstring.substring(tieuppos+String(treadle.toInt()).length()+1,tieupstring.indexOf(";",tieuppos)).trim();
-    // Serial.println(thisTieup);
-    // Serial.println(keynumstring+"="+thisTieup.substring(0,thisTieup.length()-1)+";");
     key+=keynumstring+"="+thisTieup;
     // set last line return and last equals sign
     lastEqualsSign=equalspos;
@@ -131,9 +112,6 @@ void createKey() { // replace treadling values using tieup and put into Key
     key=key+";";
   }
     keyLoaded=true;
-    // Serial.println(tieupstring);
-    // Serial.println(treadlingstring);
-    // Serial.println(key);
 }
 
 void saveKeyInfo(char *filename) {
@@ -188,9 +166,6 @@ bool loadKeyInfo(char *filename) {
               Serial.println(Buffer_Read_Line.substring(0,Buffer_Read_Line.length()-1).toInt());
               keymax=Buffer_Read_Line.substring(0,Buffer_Read_Line.length()-1).toInt();
             }
-            // else if (iterator==2) {
-            //   key=Buffer_Read_Line;
-            // }
             Buffer_Read_Line="";
             iterator++;
           }
@@ -219,20 +194,16 @@ void pullTieupAndTreadling(char *filename){  // get tieup and treadling strings 
       char character=printFile.read();
       Buffer_Read_Line=Buffer_Read_Line+character;
       if(character==10 ){            //ASCII new line
-        // Serial.println(Buffer_Read_Line);
 
         if (Buffer_Read_Line.indexOf("[TREADLING]")>=0) {
-          // Serial.println("PRINTING TREADLING");
           writeToTreadling=true;
           writeToTieUp=false;
         }
         else if (Buffer_Read_Line.indexOf("[TIEUP]")>=0) {
-          // Serial.println("PRINTING TIE-UP");
           writeToTreadling=false;
           writeToTieUp=true;
         }
         else if (Buffer_Read_Line.indexOf(";")>=0) {
-          // Serial.println("FOUND STOP");
           writeToTreadling=false;
           writeToTieUp=false;
         }
@@ -269,10 +240,6 @@ void pullTieupAndTreadling(char *filename){  // get tieup and treadling strings 
 
   }
   printFile.close();
-  // Serial.println("Tieup: ");
-  // Serial.println(tieupstring);
-  // Serial.println("Treadling: ");
-  // Serial.println(treadlingstring);
 }  
 
 // filename listing
@@ -427,10 +394,6 @@ void setup() {
     displayText+=" >";
   }
   displayNewText(displayText);
-
-  // Serial.println(treadlingstring.substring(0,20));
-  // Serial.println(key.substring(0,100));
-
 }
 
 void loop() {
@@ -520,8 +483,6 @@ void loop() {
 
 
   else if (state==1) {
-    // Serial.print(String(backButtonState)+" ");
-    // Serial.println(String(forwardButtonState)+" ");
     if (forwardButtonState==2 && backButtonState==0) {
       Serial.println("Go forward");
       iterateKeynum(1);
