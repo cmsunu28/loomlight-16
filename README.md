@@ -1,4 +1,4 @@
-# The Loomlight 16 v1.0
+# The Loomlight 16 v1.1
 
 This device attaches to your Louet Jane 16-shaft loom and lights up the shafts you are meant to toggle next. It takes .wif files onto an SD card, and you select the file on boot.
 
@@ -12,7 +12,6 @@ This repo contains code, .obj files, and a diagram for wiring the Teensy.
 
 ## Design Issues
 There are a few non-breaking design issues in this version of the Loomlight.
-- The enclosure for the OLED screen bumps against the middle levers when they are toggled in the downward position. This does not interfere with weaving, but does lightly flex the loomlight in a way that may eventually require repair.
 - Long text will not appear on the screen due to size, which results in cut-off text when the .wif file indicates a pick with many shafts. The same goes for .wif files with long names. I mostly use this screen to confirm that the pick is advancing and to check the number of the pick, which appears without issue.
 
 ## Materials
@@ -28,4 +27,5 @@ In addition to what is available in the repo, you will need:
 - Barrel Jack Power 5v
 
 ## Wiring
+
 ![diagram](wiring.png)
