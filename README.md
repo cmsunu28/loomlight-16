@@ -13,6 +13,8 @@ This repo contains code, .obj files, and a diagram for wiring the Teensy.
 ## Design Issues
 There are a few non-breaking design issues in this version of the Loomlight.
 - Long text will not appear on the screen due to size, which results in cut-off text when the .wif file indicates a pick with many shafts. The same goes for .wif files with long names. I mostly use this screen to confirm that the pick is advancing and to check the number of the pick, which appears without issue.
+- The screen is placed slightly high for the height of the person weaving, and it is possible that you will have to duck down a little to read it in detail. This placement is necessary because of the motion of the middle shaft levers.
+- The SD card is slightly difficult to remove. It is recommended to put a piece of tape on the end of it to serve as a pull tab, making it easier to remove.
 
 ## Materials
 In addition to what is available in the repo, you will need:
