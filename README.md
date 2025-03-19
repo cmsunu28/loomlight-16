@@ -22,12 +22,12 @@ In addition to what is available in the repo, you will need:
 - 74AHCT125 level shifter (such as the one [here](https://www.adafruit.com/product/1787))
 - 128x32 OLED screen with I2C connection (something like [this](https://www.amazon.com/Teyleten-Robot-Display-SSD1306-Raspberry/dp/B08ZY4YBHL) is likely to work)
 - Buttons (we used ones we had lying around, but I suspect [these](https://www.amazon.com/dp/B07P25F2DL) will work)
-- A 3cm x 7cm protoboard, the type with a hole drilled in each corner
-- 2 x Female Headers (24 pins long)
+- The Board, made of either:
+    - A loomlight PCB (use [gerber file](/pcb/Gerber_loomlights-16-pcb_PCB_loomlights-16-pcb_2025-03-19.zip) at your own risk-- this version is corrected from the last time I made it, but untested) OR
+    - A 3cm x 7 cm protoboard, preferably soldered with all the components on top. See below for wiring.
 - Wires and Solder
 - [Barrel Jack Power Connector](https://www.amazon.com/Socket-Threaded-Connector-Adapter-Dustproof/dp/B08SJM2G52)
 - Barrel Jack Power 5v
 
-## Wiring
-
-![diagram](wiring.png)
+## Protoboard Wiring
+!(Wiring of the loomlight protoboard)[wiring.png]
