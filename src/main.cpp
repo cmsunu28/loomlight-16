@@ -23,8 +23,8 @@ WS2812Serial leds(numled, displayMemory, drawingMemory, ledpin, WS2812_GRB);
 #define FLIP_DOWN2  0x227093
 #define NEUTRAL  0x888888
 
-const int forwardbuttonpin = 23;
-const int backbuttonpin = 33;
+const int forwardbuttonpin = 40;
+const int backbuttonpin = 41;
 int forwardButtonState = 0; // 0: not pressed. 1: pressed. 2: debounced. 3: just released
 int backButtonState = 0;
 
